@@ -1,0 +1,13 @@
+[project]
+name = "safepub-python-port"
+version = "0.1.0"
+description = "Standalone Python port of the SafePub-related ARX algorithmic core"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.setuptools]
+packages = ["safepub"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
