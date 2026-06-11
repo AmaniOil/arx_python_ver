@@ -2,6 +2,9 @@
 
 This is a standalone Python workspace for porting the SafePub-related parts of ARX.
 
+> 日本語の使い方ガイドは [HOW_TO_USE.md](HOW_TO_USE.md) を参照してください。
+> (Japanese usage guide: [HOW_TO_USE.md](HOW_TO_USE.md))
+
 The implementation mirrors the ARX Java components at a practical Python level:
 
 - `org.deidentifier.arx.dp.ParameterCalculation`
