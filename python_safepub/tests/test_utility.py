@@ -18,7 +18,7 @@ class TestUtility(unittest.TestCase):
             (4, 1, 2),
         )
 
-        self.assertEqual(result.metric, "arx_precision")
+        self.assertEqual(result.metric, "safepub_precision")
         self.assertEqual(result.aggregate_function, "ARITHMETIC_MEAN")
         self.assertAlmostEqual(result.value, (1.0 + 0.0 + 1.0) / 3.0)
         self.assertEqual(

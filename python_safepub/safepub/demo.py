@@ -110,7 +110,7 @@ def main() -> None:
     print(f"levels: {fixed.levels}")
     print(f"suppressed sampled rows (class < k): {fixed.suppressed_sample_count}")
     print(
-        f"utility value (arx_precision, lower is better): {fixed.quality_loss:.6f}"
+        f"utility value (safepub_precision, lower is better): {fixed.quality_loss:.6f}"
     )
 
 

@@ -30,24 +30,31 @@ SUPPRESSED_VALUE = "*"
 # ARX quality models whose score function (`Metric#getScore`) is supported
 # for data-dependent differential privacy (`isScoreFunctionSupported()`).
 SCORE_FUNCTIONS: tuple[str, ...] = (
-    "arx_precision",
-    "arx_loss",
-    "arx_discernibility",
-    "arx_entropy",
-    "arx_aecs",
-    "arx_classification",
+    "safepub_precision",
+    "safepub_loss",
+    "safepub_discernibility",
+    "safepub_entropy",
+    "safepub_aecs",
+    "safepub_classification",
 )
 
 _SCORE_FUNCTION_ALIASES: Mapping[str, str] = {
-    "precision": "arx_precision",
-    "loss": "arx_loss",
-    "granularity": "arx_loss",
-    "discernibility": "arx_discernibility",
-    "entropy": "arx_entropy",
-    "non_uniform_entropy": "arx_entropy",
-    "aecs": "arx_aecs",
-    "average_class_size": "arx_aecs",
-    "classification": "arx_classification",
+    "precision": "safepub_precision",
+    "loss": "safepub_loss",
+    "granularity": "safepub_loss",
+    "discernibility": "safepub_discernibility",
+    "entropy": "safepub_entropy",
+    "non_uniform_entropy": "safepub_entropy",
+    "aecs": "safepub_aecs",
+    "average_class_size": "safepub_aecs",
+    "classification": "safepub_classification",
+    # Backwards-compatible former names
+    "arx_precision": "safepub_precision",
+    "arx_loss": "safepub_loss",
+    "arx_discernibility": "safepub_discernibility",
+    "arx_entropy": "safepub_entropy",
+    "arx_aecs": "safepub_aecs",
+    "arx_classification": "safepub_classification",
 }
 
 # ARX `DataGeneralizationScheme.GeneralizationDegree` factors.
@@ -111,7 +118,7 @@ def safe_pub_anonymize(
     search_expansion_limit: int | None = None,
     generalization_levels: Mapping[str, int] | None = None,
     generalization_degree: str | float | None = None,
-    utility_metric: str = "arx_precision",
+    utility_metric: str = "safepub_precision",
     response_variables: Sequence[str] | None = None,
 ) -> TabularAnonymizationResult:
     """Run a minimal hierarchy-based SafePub anonymization.
@@ -124,7 +131,7 @@ def safe_pub_anonymize(
 
     `utility_metric` selects the ARX quality model whose SafePub score
     function drives the data-dependent search (one of `SCORE_FUNCTIONS`).
-    `arx_classification` additionally requires `response_variables`: the
+    `safepub_classification` additionally requires `response_variables`: the
     target columns (quasi-identifying or not) whose predictability the score
     rewards, like ARX's response variables. The reference information loss
     reported as `utility` is always ARX Precision.
@@ -346,7 +353,7 @@ def calculate_utility(
     quasi_identifiers: Sequence[str],
     levels: Levels,
     max_levels: Levels,
-    metric: str = "arx_precision",
+    metric: str = "safepub_precision",
     *,
     record_count: int | None = None,
     suppressed_count: int = 0,
@@ -354,7 +361,7 @@ def calculate_utility(
     """Calculate a utility metric for the selected generalization levels."""
 
     normalized_metric = metric.lower().replace("-", "_")
-    if normalized_metric in {"arx_precision", "precision"}:
+    if normalized_metric in {"safepub_precision", "arx_precision", "precision"}:
         return arx_precision(
             quasi_identifiers,
             levels,
@@ -460,7 +467,7 @@ def _build_score_function(
     total_count = len(data)
     sample_count = len(sampled_indices)
 
-    if score_function == "arx_precision":
+    if score_function == "safepub_precision":
 
         def score(levels: Levels) -> float:
             suppressed_sample = _suppressed_sample_count(counts_for(levels), criterion.k)
@@ -478,7 +485,7 @@ def _build_score_function(
 
         return score
 
-    if score_function == "arx_loss":
+    if score_function == "safepub_loss":
         share_maps = {
             attribute: _domain_share_maps(hierarchies[attribute], max_level)
             for attribute, max_level in zip(quasi_identifiers, max_levels)
@@ -499,7 +506,7 @@ def _build_score_function(
 
         return score
 
-    if score_function == "arx_discernibility":
+    if score_function == "safepub_discernibility":
 
         def score(levels: Levels) -> float:
             return arx_discernibility_dp_score(
@@ -511,7 +518,7 @@ def _build_score_function(
 
         return score
 
-    if score_function == "arx_entropy":
+    if score_function == "safepub_entropy":
         root_values = _root_values(quasi_identifiers, hierarchies, max_levels)
 
         def score(levels: Levels) -> float:
@@ -525,7 +532,7 @@ def _build_score_function(
 
         return score
 
-    if score_function == "arx_aecs":
+    if score_function == "safepub_aecs":
 
         def score(levels: Levels) -> float:
             return arx_aecs_dp_score(
@@ -537,7 +544,7 @@ def _build_score_function(
 
         return score
 
-    if score_function == "arx_classification":
+    if score_function == "safepub_classification":
 
         def score(levels: Levels) -> float:
             return _classification_dp_score(
@@ -648,15 +655,15 @@ def _validate_response_variables(
     data_dependent: bool,
 ) -> tuple[str, ...]:
     resolved = tuple(response_variables or ())
-    if score_function == "arx_classification" and data_dependent:
+    if score_function == "safepub_classification" and data_dependent:
         if not resolved:
             raise ValueError(
-                "arx_classification requires at least one response variable, "
+                "safepub_classification requires at least one response variable, "
                 "like ARX's response variables"
             )
     elif resolved:
         raise ValueError(
-            "response_variables are only used with the arx_classification "
+            "response_variables are only used with the safepub_classification "
             "utility metric for data-dependent SafePub"
         )
     for attribute in resolved:

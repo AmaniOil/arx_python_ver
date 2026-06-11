@@ -68,7 +68,7 @@ python -m safepub.cli `
 ```text
 search budget: 0.2                             ← 探索に使う ε(既定: ε の 10%)
 anonymization budget: 1.8                      ← 匿名化に使う ε
-score function: arx_precision                  ← 探索に使った品質モデル
+score function: safepub_precision                  ← 探索に使った品質モデル
 levels: (2, 0, 0)                              ← 選ばれた一般化レベル(--qi の順)
 utility value (ARX ILScore, higher is better): -115.19...
                                                ← 解のスコア(Java版 ARX と同じ出力)
@@ -103,24 +103,24 @@ Java版でデータ依存 DP に使える6種すべてに対応しています�
 
 | `--utility-metric`   | 品質モデル               | スコア符号 |
 |----------------------|--------------------------|-----------|
-| `arx_precision`      | Precision(既定)        | 負        |
-| `arx_loss`           | Loss(粒度)             | 負        |
-| `arx_discernibility` | Discernibility           | 負        |
-| `arx_entropy`        | 非一様エントロピー       | 負        |
-| `arx_aecs`           | 平均同値類サイズ         | 正        |
-| `arx_classification` | 分類精度                 | 正        |
+| `safepub_precision`      | Precision(既定)        | 負        |
+| `safepub_loss`           | Loss(粒度)             | 負        |
+| `safepub_discernibility` | Discernibility           | 負        |
+| `safepub_entropy`        | 非一様エントロピー       | 負        |
+| `safepub_aecs`           | 平均同値類サイズ         | 正        |
+| `safepub_classification` | 分類精度                 | 正        |
 
 例: Discernibility を有用性に据える場合
 
 ```powershell
-python -m safepub.cli ... --data-dependent --utility-metric arx_discernibility
+python -m safepub.cli ... --data-dependent --utility-metric safepub_discernibility
 ```
 
-`arx_classification` のみ、目的変数(ターゲット列)の指定が必須です:
+`safepub_classification` のみ、目的変数(ターゲット列)の指定が必須です:
 
 ```powershell
 python -m safepub.cli ... --data-dependent `
-  --utility-metric arx_classification `
+  --utility-metric safepub_classification `
   --response-variable salary-class
 ```
 
@@ -198,8 +198,8 @@ python -m safepub.cli `
 | `--dp-search-budget-ratio X` | 探索バジェットを ε に対する割合で指定 |
 | `--prompt-search-budget` | 探索バジェット割合を対話的に入力(空 Enter で 0.10) |
 | `--search-expansion-limit N` | 探索ステップ数上限(既定: ローカル格子サイズ − 1) |
-| `--utility-metric` | 探索に使う品質モデル(上記6種、既定 `arx_precision`) |
-| `--response-variable 列名` | `arx_classification` の目的変数(複数可) |
+| `--utility-metric` | 探索に使う品質モデル(上記6種、既定 `safepub_precision`) |
+| `--response-variable 列名` | `safepub_classification` の目的変数(複数可) |
 | `--generalization-level 属性=N` | 固定スキームのレベル(データ非依存) |
 | `--generalization-degree` | 固定スキームの度合い(データ非依存) |
 | `--delimiter ';'` | CSV 区切り文字(省略時は自動判定) |
@@ -231,7 +231,7 @@ result = safe_pub_anonymize(
     epsilon=2.0,
     delta=1e-5,
     data_dependent=True,
-    utility_metric="arx_discernibility",  # 品質モデルの切り替え
+    utility_metric="safepub_discernibility",  # 品質モデルの切り替え
 )
 
 print("levels:", result.levels)            # 選ばれた一般化レベル

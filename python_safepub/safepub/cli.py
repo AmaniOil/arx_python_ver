@@ -240,20 +240,22 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--utility-metric",
         "--quality-model",
-        default="arx_precision",
-        choices=SCORE_FUNCTIONS,
+        default="safepub_precision",
+        metavar="METRIC",
         help="ARX quality model whose SafePub score function drives the "
-        "data-dependent search. arx_classification additionally requires "
-        "--response-variable.",
+        f"data-dependent search: one of {', '.join(SCORE_FUNCTIONS)}. "
+        "safepub_classification additionally requires --response-variable. "
+        "The former arx_* names and short names (e.g. discernibility) are "
+        "accepted as aliases.",
     )
     parser.add_argument(
         "--response-variable",
         action="append",
         default=[],
         metavar="ATTRIBUTE",
-        help="Target column for the arx_classification utility metric, like "
-        "ARX's response variables. May be given multiple times; columns may "
-        "be quasi-identifying or not.",
+        help="Target column for the safepub_classification utility metric, "
+        "like ARX's response variables. May be given multiple times; columns "
+        "may be quasi-identifying or not.",
     )
     parser.add_argument(
         "--prompt-output",

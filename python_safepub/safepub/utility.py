@@ -91,7 +91,7 @@ def arx_precision(
         aggregate += (dimension_value / dimensions) * weight
 
     return UtilityResult(
-        metric="arx_precision",
+        metric="safepub_precision",
         aggregate_function="ARITHMETIC_MEAN",
         value=aggregate,
         values_by_attribute=values_by_attribute,

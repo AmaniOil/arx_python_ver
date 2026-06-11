@@ -58,4 +58,4 @@ Known intentional deviations from ARX (documented in the README):
 - Conventional information loss is ported for Precision only; the other
   quality models contribute their SafePub score functions (which is all the
   data-dependent DP path uses). The reference information-loss line is
-  therefore always `arx_precision`.
+  therefore always `safepub_precision`.

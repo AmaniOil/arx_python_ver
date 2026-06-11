@@ -95,7 +95,7 @@ class TestCriterionAndTabular(unittest.TestCase):
         self.assertEqual(result.k, 6)
         # ARX-style output: one output row per input row.
         self.assertEqual(len(result.rows), len(data))
-        self.assertEqual(result.utility.metric, "arx_precision")
+        self.assertEqual(result.utility.metric, "safepub_precision")
         self.assertAlmostEqual(result.quality_loss, result.utility.value)
 
     def test_output_suppresses_non_sampled_and_small_class_rows(self):
@@ -205,15 +205,15 @@ class TestScoreFunctionSelection(unittest.TestCase):
     def test_every_score_function_runs(self):
         data, hierarchies = self._search_data()
         negative_models = {
-            "arx_precision",
-            "arx_loss",
-            "arx_discernibility",
-            "arx_entropy",
+            "safepub_precision",
+            "safepub_loss",
+            "safepub_discernibility",
+            "safepub_entropy",
         }
         for metric in SCORE_FUNCTIONS:
             with self.subTest(metric=metric):
                 response_variables = (
-                    ("gender",) if metric == "arx_classification" else None
+                    ("gender",) if metric == "safepub_classification" else None
                 )
                 result = safe_pub_anonymize(
                     data,
@@ -247,7 +247,21 @@ class TestScoreFunctionSelection(unittest.TestCase):
             data_dependent=True,
             utility_metric="non_uniform_entropy",
         )
-        self.assertEqual(result.score_function, "arx_entropy")
+        self.assertEqual(result.score_function, "safepub_entropy")
+
+    def test_former_arx_names_still_accepted(self):
+        data, hierarchies = self._search_data()
+        result = safe_pub_anonymize(
+            data,
+            ("age", "gender"),
+            hierarchies,
+            epsilon=2.0,
+            delta=0.5,
+            deterministic=True,
+            data_dependent=True,
+            utility_metric="arx_discernibility",
+        )
+        self.assertEqual(result.score_function, "safepub_discernibility")
 
     def test_classification_requires_response_variables(self):
         data, hierarchies = self._search_data()
@@ -260,7 +274,7 @@ class TestScoreFunctionSelection(unittest.TestCase):
                 delta=0.5,
                 deterministic=True,
                 data_dependent=True,
-                utility_metric="arx_classification",
+                utility_metric="safepub_classification",
             )
 
     def test_response_variables_require_classification(self):
@@ -274,7 +288,7 @@ class TestScoreFunctionSelection(unittest.TestCase):
                 delta=0.5,
                 deterministic=True,
                 data_dependent=True,
-                utility_metric="arx_precision",
+                utility_metric="safepub_precision",
                 response_variables=("gender",),
             )
 

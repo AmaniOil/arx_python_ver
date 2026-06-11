@@ -95,23 +95,26 @@ data-dependent DP are available:
 
 | `--utility-metric`   | ARX quality model                 | SafePub | Score sign |
 |----------------------|-----------------------------------|---------|------------|
-| `arx_precision`      | `MetricMDNMPrecision` (default)   | §5.1    | negative   |
-| `arx_loss`           | `MetricMDNMLoss` (granularity)    | §5.1    | negative   |
-| `arx_discernibility` | `MetricSDNMDiscernability`        | §5.2    | negative   |
-| `arx_entropy`        | `MetricMDNUEntropyPrecomputed`    | §5.3    | negative   |
-| `arx_aecs`           | `MetricSDAECS` (avg. class size)  | §5.4    | positive   |
-| `arx_classification` | `MetricSDClassification`          | §5.5    | positive   |
+| `safepub_precision`      | `MetricMDNMPrecision` (default)   | §5.1    | negative   |
+| `safepub_loss`           | `MetricMDNMLoss` (granularity)    | §5.1    | negative   |
+| `safepub_discernibility` | `MetricSDNMDiscernability`        | §5.2    | negative   |
+| `safepub_entropy`        | `MetricMDNUEntropyPrecomputed`    | §5.3    | negative   |
+| `safepub_aecs`           | `MetricSDAECS` (avg. class size)  | §5.4    | positive   |
+| `safepub_classification` | `MetricSDClassification`          | §5.5    | positive   |
+
+The former `arx_*` metric names are still accepted as aliases by the API
+(`safe_pub_anonymize(utility_metric=...)`), so existing scripts keep working.
 
 Higher scores are always better; like in Java, the AECS score (number of
 non-suppressed classes, plus one if anything is suppressed) and the
 Classification score (majority-class frequencies divided by the sensitivity
-`k * #targets`) are positive, the others negative. `arx_classification`
+`k * #targets`) are positive, the others negative. `safepub_classification`
 requires at least one target column via `--response-variable ATTRIBUTE`
 (quasi-identifying or not), like ARX's response variables:
 
 ```powershell
 python -m safepub.cli ... --data-dependent `
-  --utility-metric arx_classification `
+  --utility-metric safepub_classification `
   --response-variable salary-class
 ```
 
@@ -183,7 +186,7 @@ The reported `utility value` mirrors what Java ARX reports for the solution:
   CLI prints this as `utility value (ARX ILScore, higher is better)` and
   exposes it as `result.score` (model name in `result.score_function`).
 - **Data-independent (fixed scheme) runs**: ARX measures conventional
-  information loss, so the reported value is `arx_precision` — ARX's
+  information loss, so the reported value is `safepub_precision` — ARX's
   arithmetic-mean Precision including record suppression
   (`MetricMDNMPrecision#getInformationLossInternal`, normalized by the
   sampled-subset size, with ARX's default `gsFactor=0.5` so both factors
