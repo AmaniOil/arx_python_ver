@@ -79,18 +79,39 @@ def main() -> None:
         epsilon=epsilon,
         delta=delta,
         deterministic=True,
+        data_dependent=True,
     )
 
-    print("Minimal tabular anonymization result")
+    print("Data-dependent tabular anonymization result")
     print(f"levels: {result.levels}")
+    print(f"utility value (ARX ILScore, higher is better): {result.score:.12g}")
     print(f"k: {result.k}")
     print(f"beta: {result.beta:.12f}")
     print(f"sampled rows: {len(result.sampled_indices)} / {len(data)}")
-    print(f"quality loss: {result.quality_loss:.6f}")
+    print(f"suppressed sampled rows (class < k): {result.suppressed_sample_count}")
+    print(f"non-sampled rows (suppressed in output): {result.non_sampled_count}")
     print("equivalence classes on sampled rows:")
     pprint(dict(result.equivalence_class_counts))
     print("first five output rows:")
     pprint(result.rows[:5])
+
+    fixed = safe_pub_anonymize(
+        data,
+        ("age", "gender", "zipcode"),
+        hierarchies,
+        epsilon=epsilon,
+        delta=delta,
+        deterministic=True,
+        generalization_degree="medium",
+    )
+
+    print()
+    print("Data-independent (fixed MEDIUM scheme) result")
+    print(f"levels: {fixed.levels}")
+    print(f"suppressed sampled rows (class < k): {fixed.suppressed_sample_count}")
+    print(
+        f"utility value (arx_precision, lower is better): {fixed.quality_loss:.6f}"
+    )
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ import unittest
 
 from safepub.cli import (
     main,
+    parse_generalization_level_arguments,
     parse_hierarchy_arguments,
     prompt_for_search_budget_ratio,
     prompt_for_missing_hierarchy_paths,
@@ -55,6 +56,18 @@ class TestCLI(unittest.TestCase):
     def test_parse_hierarchy_arguments(self):
         parsed = parse_hierarchy_arguments(["age=age.csv", "gender=gender.csv"])
         self.assertEqual(parsed, {"age": "age.csv", "gender": "gender.csv"})
+
+    def test_parse_generalization_level_arguments(self):
+        parsed = parse_generalization_level_arguments(["age=2", "gender=0"])
+        self.assertEqual(parsed, {"age": 2, "gender": 0})
+
+    def test_parse_generalization_level_arguments_rejects_bad_values(self):
+        with self.assertRaises(ValueError):
+            parse_generalization_level_arguments(["age"])
+        with self.assertRaises(ValueError):
+            parse_generalization_level_arguments(["age=two"])
+        with self.assertRaises(ValueError):
+            parse_generalization_level_arguments(["age=-1"])
 
     def test_prompt_for_missing_hierarchy_paths(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -135,6 +148,8 @@ class TestCLI(unittest.TestCase):
                     "--delta",
                     "0.5",
                     "--deterministic",
+                    "--generalization-degree",
+                    "complete",
                     "--output",
                     str(output_path),
                     "--hierarchy-header",
@@ -147,6 +162,8 @@ class TestCLI(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertIn("age,gender", output_text)
         self.assertIn("*,*", output_text)
+        # ARX-style output keeps one row per input record.
+        self.assertEqual(len(output_text.strip().splitlines()), 13)
 
     def test_main_uses_requested_output_delimiter(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -209,6 +226,8 @@ class TestCLI(unittest.TestCase):
                     "--delta",
                     "0.5",
                     "--deterministic",
+                    "--generalization-degree",
+                    "complete",
                     "--delimiter",
                     ";",
                     "--output",
@@ -222,6 +241,21 @@ class TestCLI(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertIn("age;label", output_text)
+
+    def test_main_requires_scheme_for_data_independent_mode(self):
+        with self.assertRaises(ValueError):
+            main(
+                [
+                    "--data",
+                    "ignored.csv",
+                    "--qi",
+                    "age",
+                    "--epsilon",
+                    "2.0",
+                    "--delta",
+                    "0.5",
+                ]
+            )
 
 
 if __name__ == "__main__":

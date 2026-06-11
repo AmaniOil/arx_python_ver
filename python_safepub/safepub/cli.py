@@ -9,7 +9,7 @@ from typing import Callable, Sequence, TextIO
 
 from .csv_io import read_data_csv, read_hierarchies_from_paths, write_data_csv
 from .criterion import DEFAULT_SEARCH_BUDGET_RATIO
-from .tabular import safe_pub_anonymize
+from .tabular import GENERALIZATION_DEGREES, SCORE_FUNCTIONS, safe_pub_anonymize
 
 
 InputFunction = Callable[[str], str]
@@ -55,6 +55,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         dp_search_budget_ratio=dp_search_budget_ratio,
     )
 
+    generalization_levels = parse_generalization_level_arguments(
+        args.generalization_level
+    )
+    if not data_dependent and not generalization_levels and args.generalization_degree is None:
+        raise ValueError(
+            "data-independent SafePub requires a fixed generalization scheme: "
+            "pass --generalization-level ATTRIBUTE=LEVEL and/or "
+            "--generalization-degree, or use --data-dependent"
+        )
+
     hierarchy_paths = parse_hierarchy_arguments(args.hierarchy)
     hierarchy_paths.update(
         prompt_for_missing_hierarchy_paths(
@@ -83,7 +93,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         data_dependent=data_dependent,
         dp_search_budget=dp_search_budget,
         search_expansion_limit=args.search_expansion_limit,
+        generalization_levels=generalization_levels or None,
+        generalization_degree=args.generalization_degree,
         utility_metric=args.utility_metric,
+        response_variables=args.response_variable or None,
     )
 
     output.write("SafePub anonymization completed\n")
@@ -93,19 +106,38 @@ def main(argv: Sequence[str] | None = None) -> int:
     output.write(f"search budget ratio: {dp_search_budget / args.epsilon:.6f}\n")
     output.write(f"anonymization budget: {args.epsilon - dp_search_budget:.12g}\n")
     output.write(f"search strategy: {result.search_strategy}\n")
+    if result.score_function is not None:
+        output.write(f"score function: {result.score_function}\n")
     if result.search_expansion_limit is not None:
         output.write(f"search expansion limit: {result.search_expansion_limit}\n")
     if result.search_result is not None:
         output.write(f"search steps: {len(result.search_result.steps) - 1}\n")
         output.write(f"search stopped early: {result.search_result.stopped_early}\n")
-        output.write(f"search best score: {result.search_result.best_score:.12g}\n")
     output.write(f"levels: {result.levels}\n")
     output.write(f"k: {result.k}\n")
     output.write(f"beta: {result.beta:.12f}\n")
     output.write(f"sampled rows: {len(result.sampled_indices)} / {len(data)}\n")
-    output.write(f"utility metric: {result.utility.metric}\n")
-    output.write(f"aggregate function: {result.utility.aggregate_function}\n")
-    output.write(f"utility value: {result.utility.value:.6f}\n")
+    released_rows = len(result.sampled_indices) - result.suppressed_sample_count
+    output.write(
+        f"suppressed sampled rows (class < k): {result.suppressed_sample_count}\n"
+    )
+    output.write(
+        f"non-sampled rows (suppressed in output): {result.non_sampled_count}\n"
+    )
+    output.write(f"released rows: {released_rows} / {len(data)}\n")
+    # Mirror Java ARX's reported utility: for data-dependent DP the solution's
+    # information loss is the ILScore alone; for fixed schemes ARX measures
+    # conventional information loss (Precision).
+    if result.score is not None:
+        output.write(
+            f"utility value (ARX ILScore, higher is better): {result.score:.12g}\n"
+        )
+    else:
+        output.write(
+            f"utility value ({result.utility.metric}, "
+            f"{result.utility.aggregate_function}, lower is better): "
+            f"{result.utility.value:.6f}\n"
+        )
 
     output_path = args.output
     if output_path is None and args.prompt_output:
@@ -185,14 +217,43 @@ def build_parser() -> argparse.ArgumentParser:
         help="Maximum number of data-dependent search expansions. Defaults to "
         "the local hierarchy lattice size minus one.",
     )
+    parser.add_argument(
+        "--generalization-level",
+        action="append",
+        default=[],
+        metavar="ATTRIBUTE=LEVEL",
+        help="Fixed generalization level for one quasi identifier "
+        "(data-independent SafePub, like ARX's DataGeneralizationScheme). "
+        "Attributes without an explicit level fall back to "
+        "--generalization-degree.",
+    )
+    parser.add_argument(
+        "--generalization-degree",
+        choices=tuple(sorted(GENERALIZATION_DEGREES)),
+        help="Fixed generalization degree applied to quasi identifiers without "
+        "an explicit --generalization-level (data-independent SafePub). The "
+        "level is round(factor * max_level), like ARX.",
+    )
     parser.add_argument("--deterministic", action="store_true")
     parser.add_argument("--delimiter", help="CSV delimiter. Auto-detected if omitted.")
     parser.add_argument("--output", help="Output anonymized CSV path.")
     parser.add_argument(
         "--utility-metric",
+        "--quality-model",
         default="arx_precision",
-        choices=("arx_precision", "precision"),
-        help="Utility metric used to compare candidate generalization levels.",
+        choices=SCORE_FUNCTIONS,
+        help="ARX quality model whose SafePub score function drives the "
+        "data-dependent search. arx_classification additionally requires "
+        "--response-variable.",
+    )
+    parser.add_argument(
+        "--response-variable",
+        action="append",
+        default=[],
+        metavar="ATTRIBUTE",
+        help="Target column for the arx_classification utility metric, like "
+        "ARX's response variables. May be given multiple times; columns may "
+        "be quasi-identifying or not.",
     )
     parser.add_argument(
         "--prompt-output",
@@ -206,6 +267,34 @@ def build_parser() -> argparse.ArgumentParser:
         help="Whether hierarchy CSV files contain a header row. Default: auto.",
     )
     return parser
+
+
+def parse_generalization_level_arguments(values: Sequence[str]) -> dict[str, int]:
+    """Parse `ATTRIBUTE=LEVEL` CLI generalization-scheme arguments."""
+
+    result: dict[str, int] = {}
+    for value in values:
+        if "=" not in value:
+            raise ValueError(
+                f"generalization level argument must be ATTRIBUTE=LEVEL: {value!r}"
+            )
+        attribute, raw_level = value.split("=", 1)
+        attribute = attribute.strip()
+        raw_level = raw_level.strip()
+        if not attribute or not raw_level:
+            raise ValueError(
+                f"generalization level argument must be ATTRIBUTE=LEVEL: {value!r}"
+            )
+        try:
+            level = int(raw_level)
+        except ValueError as error:
+            raise ValueError(
+                f"generalization level must be an integer: {value!r}"
+            ) from error
+        if level < 0:
+            raise ValueError(f"generalization level must be >= 0: {value!r}")
+        result[attribute] = level
+    return result
 
 
 def parse_hierarchy_arguments(values: Sequence[str]) -> dict[str, str]:

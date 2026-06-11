@@ -39,6 +39,12 @@ class DataDependentEDDPSearch(Generic[TransformationID]):
     quality metrics. This Python class keeps the same pivot/candidate update
     loop but accepts small callables for predecessor lookup and score
     calculation, so it can be used with a custom Python lattice.
+
+    Following ARX, every lattice predecessor is admitted as a candidate; with
+    SafePub's record suppression there is no validity filtering, only scores.
+    The optimum is tracked like `AbstractAlgorithm#trackOptimum`: a pivot
+    becomes the new best when its score is higher, or equal with a lower
+    transformation level (given via the optional `level` callable).
     """
 
     def __init__(
@@ -50,6 +56,7 @@ class DataDependentEDDPSearch(Generic[TransformationID]):
         expansion_limit: int,
         epsilon_search: float,
         deterministic: bool = False,
+        level: Callable[[TransformationID], float] | None = None,
     ) -> None:
         if expansion_limit < 0:
             raise ValueError("expansion_limit must be >= 0")
@@ -59,6 +66,7 @@ class DataDependentEDDPSearch(Generic[TransformationID]):
         self.top = top
         self.predecessors = predecessors
         self.score = score
+        self.level = level
         self.expansion_limit = expansion_limit
         epsilon_per_step = (
             epsilon_search / float(expansion_limit) if expansion_limit != 0 else 0.0
@@ -104,7 +112,11 @@ class DataDependentEDDPSearch(Generic[TransformationID]):
             pivot = self.exponential_mechanism.choose(candidate_scores.items())
             pivot_score = assure_score(pivot)
 
-            if pivot_score > best_score:
+            if pivot_score > best_score or (
+                pivot_score == best_score
+                and self.level is not None
+                and self.level(pivot) < self.level(best)
+            ):
                 best = pivot
                 best_score = pivot_score
 
